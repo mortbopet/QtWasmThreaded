@@ -1,0 +1,46 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. 
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        qt-version: [5.12.2]
+
+    steps:
+      - name: Prepare container for build
+        run: |
+          sudo apt-get build-dep qt5-default
+          sudo apt-get install libxcb-xinerama0-dev
+    
+      - name: Checkout Qt
+        run: |
+          git clone git://code.qt.io/qt/qt5.git
+          pushd qt5
+          git checkout ${{ matrix.qt-version }}
+          ./init-repository
+
+      - name: Download Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          pushd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+          
+      - name: Configure Qt
+        run: |
+          source emsdk/emsdk_env.sh
+          pushd qt5
+          ./configure -xplatform wasm-emscripten -nomake examples \
+          -prefix $PWD/qtbase -feature-thread -opensource -confirm-license
+      
