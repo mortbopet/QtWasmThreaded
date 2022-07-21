@@ -15,7 +15,7 @@ jobs:
     
     strategy:
       matrix:
-        qt-version: [6.3.0]
+        qt-version: [6.4]
 
     steps:
       - name: Prepare container for build
@@ -26,21 +26,35 @@ jobs:
       - name: Download Emscripten
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
-          pushd emsdk
+          cd emsdk
           ./emsdk install latest
           ./emsdk activate latest
 
       - name: Checkout Qt
         run: |
           git clone git://code.qt.io/qt/qt5.git
-          pushd qt5
+          cd qt5
           git checkout ${{ matrix.qt-version }}
           ./init-repository
+
+      - name: Build host Qt
+        run: |
+          cd qt5
+          mkdir build_host
+          ../configure -opensource -confirm-license
+          cmake --build .
 
       - name: Configure Qt
         run: |
           source emsdk/emsdk_env.sh
           pushd qt5
-          ./configure -xplatform wasm-emscripten -nomake examples \
-            -prefix $PWD/qtbase -feature-thread -opensource -confirm-license
+          mkdir build_wasm
+          cd build_wasm
+          ./configure -qt-host-path ../build_host \
+            -xplatform wasm-emscripten \
+            -nomake examples \
+            -feature-thread \
+            -opensource \
+            -confirm-license
+          cmake --build . -t qtbase -t qtsvg -t qtcharts
       
